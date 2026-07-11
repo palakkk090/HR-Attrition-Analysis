@@ -13,7 +13,7 @@ Which employees are we losing, why, and what is it costing the company?
 
 ## Tools Used
 SQL (SQLite/DB Browser) for analysis
-Power BI for visualization
+ Power BI for visualization
 
 ## Files
 - `/sql/attrition_analysis.sql` — all analysis queries

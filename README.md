@@ -18,7 +18,7 @@ Power BI for visualization
 ## Files
 - `/sql/attrition_analysis.sql` — all analysis queries
 - `/dashboard/HR_Attrition_Dashboard.pbix` — full interactive dashboard
-- `/data/HR_Attrition_Enriched.csv` — enriched dataset used in Power BI
+- `/data/Analysed_dataset.csv` — enriched dataset used in Power BI
 
 ## Approach
 1. Explored the IBM HR Analytics dataset (1,470 employees) in SQL

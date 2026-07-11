@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="hr_attrition.db" readonly="0" foreign_keys="1" case_sensitive_like="0" temp_store="0" wal_autocheckpoint="1000" synchronous="2"/><attached/><window><main_tabs open="structure browser pragmas query" current="3"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="100"/><column_width id="3" width="5632"/><column_width id="4" width="0"/><expanded_item id="0" parent="1"/><expanded_item id="1" parent="1"/><expanded_item id="2" parent="1"/><expanded_item id="3" parent="1"/></tab_structure><tab_browse><table title="employee" custom_title="0" dock_id="1" table="4,8:mainemployee"/><dock_state state="000000ff00000000fd00000001000000020000000000000000fc0100000001fb000000160064006f0063006b00420072006f00770073006500310100000000ffffffff0000011800ffffff000000000000000000000004000000040000000800000008fc00000000"/><default_encoding codec=""/><browse_table_settings><table schema="main" name="employee" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_" freeze_columns="0"><sort/><column_widths><column index="1" value="29"/><column index="2" value="55"/><column index="3" value="140"/><column index="4" value="62"/><column index="5" value="179"/><column index="6" value="117"/><column index="7" value="63"/><column index="8" value="132"/><column index="9" value="95"/><column index="10" value="106"/><column index="11" value="144"/><column index="12" value="54"/><column index="13" value="71"/><column index="14" value="98"/><column index="15" value="57"/><column index="16" value="202"/><column index="17" value="93"/><column index="18" value="83"/><column index="19" value="95"/><column index="20" value="79"/><column index="21" value="138"/><column index="22" value="49"/><column index="23" value="62"/><column index="24" value="110"/><column index="25" value="116"/><column index="26" value="143"/><column index="27" value="91"/><column index="28" value="105"/><column index="29" value="114"/><column index="30" value="135"/><column index="31" value="102"/><column index="32" value="103"/><column index="33" value="118"/><column index="34" value="150"/><column index="35" value="138"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table></browse_table_settings></tab_browse><tab_sql><sql name="attrition_analysis.sql" filename="C:/Users/agarw/Desktop/attrition_analysis.sql">-- Reference to file &quot;C:/Users/agarw/Desktop/attrition_analysis.sql&quot; (not supported by this version) --</sql><sql name="SQL 3">SELECT
+OverTime,Department,
+COUNT(*) as total_count,
+SUM(case when Attrition ='Yes' then 1 else 0 end) as count,
+ROUND(100.0 * SUM(CASE WHEN Attrition = 'Yes' THEN 1 ELSE 0 END) / COUNT(*) , 1) AS attrition
+from employee
+group by OverTime , Department;
+
+-- ATTRITION BY OVERTIME &amp; DEPARTMENT
+-- Does working overtime increase the chance an employee leaves , also of which Department?
+-- This tests our strongest suspected driver first.</sql><sql name="SQL 4">SELECT
+JobRole ,
+count(*) as total,
+sum(CASE WHEN ATTRITION = 'Yes' THEN 1 ELSE 0 END) AS LEFT_COUNT,
+ROUND(100.0 * sum(CASE WHEN ATTRITION = 'Yes' THEN 1 ELSE 0 END) /COUNT(*), 1) AS ATTRITION_RATE 
+FROM Employee
+GROUP  BY JobRole
+ORDER BY ATTRITION_RATE DESC;
+
+-- ATTRITION BY JOB ROLE
+-- Which specific roles are the highest risk?
+</sql><sql name="SQL 5">SELECT
+ CASE 
+ WHEN YearsAtCompany&lt;= 1 THEN ' 0-1 YEARR'
+ WHEN YearsAtCompany&lt;= 3 THEN ' 1-3 YEARS' 
+ WHEN YearsAtCompany&lt;= 6 THEN ' 3-6 YEARS' 
+ WHEN YearsAtCompany&lt;= 10 THEN'6-10 YEARS'
+ ELSE '10+YEARS'
+
+END AS TENURE_CLASS,
+COUNT(*) AS TOTAL,
+SUM(CASE WHEN ATTRITION='Yes' THEN 1 ELSE 0 END) AS LEFT_COUNT,
+ROUND(100.0 * SUM(CASE WHEN ATTRITION ='Yes' THEN 1 ELSE 0 END)/COUNT(*) , 1) AS ATTRITION_RATE
+FROM Employee
+GROUP BY TENURE_CLASS
+ORDER BY YearsAtCompany ASC ;
+
+-- ATTRITION BY TENURE (YEARS AT COMPANY)
+-- Does risk change based on how long someone has worked here?</sql><sql name="SQL 6">WITH income_ranked AS (
+    SELECT *,
+           NTILE(4) OVER (ORDER BY MonthlyIncome) AS income_quartile
+    FROM employee
+)
+SELECT
+    income_quartile,
+    COUNT(*) AS total,
+    SUM(CASE WHEN Attrition = 'Yes' THEN 1 ELSE 0 END) AS left_count,
+    ROUND(100.0 * SUM(CASE WHEN Attrition = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 1) AS attrition_rate_pct
+FROM income_ranked
+GROUP BY income_quartile;
+
+-- ATTRITION BY INCOME QUARTILE
+-- Is this a pay problem or a culture problem?</sql><sql name="SQL 7">SELECT
+    OverTime,
+    CASE WHEN JobSatisfaction &lt;= 2 THEN 'Low (1-2)' ELSE 'High (3-4)' END AS satisfaction_class,
+    COUNT(*) AS total,
+    SUM(CASE WHEN Attrition = 'Yes' THEN 1 ELSE 0 END) AS left_count,
+    ROUND(100.0 * SUM(CASE WHEN Attrition = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 1) AS attrition_rate
+FROM employee
+GROUP BY OverTime, satisfaction_class
+ORDER BY attrition_rate DESC;
+
+-- OVERTIME x JOB SATISFACTION (INTERACTION EFFECT)
+-- Does combining our top two risk factors produce a WORSE rate than either factor alone?
+-- Apparently OverTime-yes &amp; lower satisfaction (1-2) is higher Attrition than OverTime alone which was 30.5% </sql><sql name="SQL 8">SELECT
+    Department,
+    SUM(CASE WHEN Attrition = 'Yes' THEN MonthlyIncome * 12 * 0.5 ELSE 0 END) AS estimated_replacement_cost
+FROM employee
+GROUP BY Department
+ORDER BY estimated_replacement_cost DESC;
+
+-- ESTIMATED COST OF ATTRITION BY DEPARTMENT
+-- Converts headcount loss into a dollar figure leadership can act on. Uses 50% of annual salary as replacement cost estimate
+-- ( as per standard conservative HR industry benchmark)</sql><sql name="SQL 9">SELECT
+    EmployeeNumber,
+    Department,
+    JobRole,
+    MonthlyIncome,
+    JobSatisfaction,
+    OverTime,
+    YearsAtCompany
+FROM employee
+WHERE Attrition = 'No'
+  AND OverTime = 'Yes'
+  AND JobSatisfaction &lt;= 2
+ORDER BY MonthlyIncome DESC;
+
+-- CURRENTLY ACTIVE AT-RISK EMPLOYEES
+-- Applies the proven high-risk profile from sql7 (where Overtime=Yes AND
+-- low Job Satisfaction) to CURRENT employees (Attrition='No') to
+-- flag who is likely to leave next. This is the forward-looking,actionable output of the whole analysis.
+-- actionable output of the whole analysis.</sql><sql name="SQL 10">WITH income_ranked AS (
+    SELECT *, NTILE(4) OVER (ORDER BY MonthlyIncome) AS IncomeQuartile
+    FROM employee
+)
+SELECT
+    *,
+    CASE
+        WHEN YearsAtCompany &lt;= 1 THEN '0-1yr'
+        WHEN YearsAtCompany &lt;= 3 THEN '1-3yr'
+        WHEN YearsAtCompany &lt;= 6 THEN '3-6yr'
+        WHEN YearsAtCompany &lt;= 10 THEN '6-10yr'
+        ELSE '10+yr'
+    END AS TenureBucket,
+
+    CASE
+        WHEN JobSatisfaction &lt;= 2 THEN 'Low (1-2)'
+        ELSE 'High (3-4)'
+    END AS SatisfactionBucket,
+
+    CASE
+        WHEN OverTime = 'Yes' AND JobSatisfaction &lt;= 2 AND Attrition = 'No' THEN 'At Risk'
+        ELSE 'Normal'
+    END AS AtRiskFlag,
+
+    MonthlyIncome * 12 AS AnnualIncome,
+
+    CASE WHEN Attrition = 'Yes' THEN MonthlyIncome * 12 * 0.5 ELSE 0 END AS EstReplacementCost
+
+FROM income_ranked;</sql><sql name="SQL 11">SELECT
+    *,
+    CASE
+        WHEN YearsAtCompany &lt;= 1 THEN '0-1yr'
+        WHEN YearsAtCompany &lt;= 3 THEN '1-3yr'
+        WHEN YearsAtCompany &lt;= 6 THEN '3-6yr'
+        WHEN YearsAtCompany &lt;= 10 THEN '6-10yr'
+        ELSE '10+yr'
+    END AS TenureBucket,
+
+    CASE
+        WHEN JobSatisfaction &lt;= 2 THEN 'Low (1-2)'
+        ELSE 'High (3-4)'
+    END AS SatisfactionBucket,
+
+    CASE
+        WHEN OverTime = 'Yes' AND JobSatisfaction &lt;= 2 AND Attrition = 'No' THEN 'At Risk'
+        ELSE 'Normal'
+    END AS AtRiskFlag,
+
+    MonthlyIncome * 12 AS AnnualIncome,
+
+    CASE WHEN Attrition = 'Yes' THEN MonthlyIncome * 12 * 0.5 ELSE 0 END AS EstReplacementCost
+
+FROM employee;</sql><current_tab id="9"/></tab_sql></sqlb_project>

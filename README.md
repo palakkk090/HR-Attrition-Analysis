@@ -99,24 +99,6 @@ These figures represent **potential cost exposure avoided**, not ROI, because th
 
 ---
 
-## Repository Structure
-
-HR-Attrition-Analysis/
-│
-├── data/
-│   ├── RealDataset.csv
-│   └── Analysed_dataset.csv
-│
-├── dashboard/
-│   ├── HR_Attrition_Dashboard.pbix
-│   └── HR_Attrition_Dashboard.pdf
-│
-├── sql/
-│   └── attrition_analysis.sql
-│
-├── hr_attrition.db
-├── hr_attrition.sqbpro
-└── README.md
 ## Dataset
 **IBM HR Analytics Employee Attrition & Performance dataset**
 The dataset contains information on employee demographics, compensation, job characteristics, satisfaction, overtime, tenure and attrition status.

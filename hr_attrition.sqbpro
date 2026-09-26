@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="hr_attrition.db" readonly="0" foreign_keys="1" case_sensitive_like="0" temp_store="0" wal_autocheckpoint="1000" synchronous="2"/><attached/><window><main_tabs open="structure browser pragmas query" current="3"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="100"/><column_width id="3" width="5633"/><column_width id="4" width="0"/><expanded_item id="0" parent="1"/><expanded_item id="1" parent="1"/><expanded_item id="2" parent="1"/><expanded_item id="3" parent="1"/></tab_structure><tab_browse><table title="Employee" custom_title="0" dock_id="1" table="4,8:mainEmployee"/><dock_state state="000000ff00000000fd00000001000000020000000000000000fc0100000001fb000000160064006f0063006b00420072006f00770073006500310100000000ffffffff0000011300ffffff000000000000000000000004000000040000000800000008fc00000000"/><default_encoding codec=""/><browse_table_settings/></tab_browse><tab_sql><sql name="SQL 1*">SELECT
+    *,
+    CASE
+        WHEN YearsAtCompany &lt;= 1 THEN '0-1yr'
+        WHEN YearsAtCompany &lt;= 3 THEN '1-3yr'
+        WHEN YearsAtCompany &lt;= 6 THEN '3-6yr'
+        WHEN YearsAtCompany &lt;= 10 THEN '6-10yr'
+        ELSE '10+yr'
+    END AS TenureBucket,
+
+    CASE
+        WHEN JobSatisfaction &lt;= 2 THEN 'Low (1-2)'
+        ELSE 'High (3-4)'
+    END AS SatisfactionBucket,
+
+    CASE
+        WHEN OverTime = 'Yes' AND JobSatisfaction &lt;= 2 AND Attrition = 'No' THEN 'At Risk'
+        ELSE 'Normal'
+    END AS AtRiskFlag,
+
+    MonthlyIncome * 12 AS AnnualIncome,
+
+    CASE WHEN Attrition = 'Yes' THEN MonthlyIncome * 12 * 0.5 ELSE 0 END AS EstReplacementCost
+
+FROM employee;
+</sql><sql name="SQL 2*">SELECT
+OverTime,Department,
+COUNT(*) as total_count,
+SUM(case when Attrition ='Yes' then 1 else 0 end) as count,
+ROUND(100.0 * SUM(CASE WHEN Attrition = 'Yes' THEN 1 ELSE 0 END) / COUNT(*) , 1) AS attrition
+from employee
+group by OverTime , Department;
+
+-- ATTRITION BY OVERTIME &amp; DEPARTMENT
+-- Does working overtime increase the chance an employee leaves , also of which Department?
+-- This tests our strongest suspected driver first.</sql><sql name="SQL 4*">SELECT
+JobRole ,
+count(*) as total,
+sum(CASE WHEN ATTRITION = 'Yes' THEN 1 ELSE 0 END) AS LEFT_COUNT,
+ROUND(100.0 * sum(CASE WHEN ATTRITION = 'Yes' THEN 1 ELSE 0 END) /COUNT(*), 1) AS ATTRITION_RATE 
+FROM Employee
+GROUP  BY JobRole
+ORDER BY ATTRITION_RATE DESC;
+
+-- ATTRITION BY JOB ROLE
+-- Which specific roles are the highest risk?
+</sql><sql name="SQL 5*">SELECT
+ CASE 
+ WHEN YearsAtCompany&lt;= 1 THEN ' 0-1 YEARR'
+ WHEN YearsAtCompany&lt;= 3 THEN ' 1-3 YEARS' 
+ WHEN YearsAtCompany&lt;= 6 THEN ' 3-6 YEARS' 
+ WHEN YearsAtCompany&lt;= 10 THEN'6-10 YEARS'
+ ELSE '10+YEARS'
+
+END AS TENURE_CLASS,
+COUNT(*) AS TOTAL,
+SUM(CASE WHEN ATTRITION='Yes' THEN 1 ELSE 0 END) AS LEFT_COUNT,
+ROUND(100.0 * SUM(CASE WHEN ATTRITION ='Yes' THEN 1 ELSE 0 END)/COUNT(*) , 1) AS ATTRITION_RATE
+FROM Employee
+GROUP BY TENURE_CLASS
+ORDER BY YearsAtCompany ASC ;
+
+-- ATTRITION BY TENURE (YEARS AT COMPANY)
+-- Does risk change based on how long someone has worked here?</sql><sql name="SQL 6*">WITH income_ranked AS (
+    SELECT *,
+           NTILE(4) OVER (ORDER BY MonthlyIncome) AS income_quartile
+    FROM employee
+)
+SELECT
+    income_quartile,
+    COUNT(*) AS total,
+    SUM(CASE WHEN Attrition = 'Yes' THEN 1 ELSE 0 END) AS left_count,
+    ROUND(100.0 * SUM(CASE WHEN Attrition = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 1) AS attrition_rate_pct
+FROM income_ranked
+GROUP BY income_quartile;
+
+-- ATTRITION BY INCOME QUARTILE
+-- Is this a pay problem or a culture problem?</sql><sql name="SQL 7*">SELECT
+    OverTime,
+    CASE WHEN JobSatisfaction &lt;= 2 THEN 'Low (1-2)' ELSE 'High (3-4)' END AS satisfaction_class,
+    COUNT(*) AS total,
+    SUM(CASE WHEN Attrition = 'Yes' THEN 1 ELSE 0 END) AS left_count,
+    ROUND(100.0 * SUM(CASE WHEN Attrition = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 1) AS attrition_rate
+FROM employee
+GROUP BY OverTime, satisfaction_class
+ORDER BY attrition_rate DESC;
+
+-- OVERTIME x JOB SATISFACTION (INTERACTION EFFECT)
+-- Does combining our top two risk factors produce a WORSE rate than either factor alone?
+-- Apparently OverTime-yes &amp; lower satisfaction (1-2) is higher Attrition than OverTime alone which was 30.5% </sql><sql name="SQL 8*">SELECT
+    Department,
+    SUM(CASE WHEN Attrition = 'Yes' THEN MonthlyIncome * 12 * 0.5 ELSE 0 END) AS estimated_replacement_cost
+FROM employee
+GROUP BY Department
+ORDER BY estimated_replacement_cost DESC;
+
+-- ESTIMATED COST OF ATTRITION BY DEPARTMENT
+-- Converts headcount loss into a dollar figure leadership can act on. Uses 50% of annual salary as replacement cost estimate
+-- ( as per standard conservative HR industry benchmark)</sql><sql name="SQL 9*">SELECT
+    EmployeeNumber,
+    Department,
+    JobRole,
+    MonthlyIncome,
+    JobSatisfaction,
+    OverTime,
+    YearsAtCompany
+FROM employee
+WHERE Attrition = 'No'
+  AND OverTime = 'Yes'
+  AND JobSatisfaction &lt;= 2
+ORDER BY MonthlyIncome DESC;
+
+-- CURRENTLY ACTIVE AT-RISK EMPLOYEES
+-- Applies the proven high-risk profile from sql7 (where Overtime=Yes AND
+-- low Job Satisfaction) to CURRENT employees (Attrition='No') to
+-- flag who is likely to leave next. This is the forward-looking,actionable output of the whole analysis.
+-- actionable output of the whole analysis.</sql><sql name="SQL 10*">WITH income_ranked AS (
+    SELECT *, NTILE(4) OVER (ORDER BY MonthlyIncome) AS IncomeQuartile
+    FROM employee
+)
+SELECT
+    *,
+    CASE
+        WHEN YearsAtCompany &lt;= 1 THEN '0-1yr'
+        WHEN YearsAtCompany &lt;= 3 THEN '1-3yr'
+        WHEN YearsAtCompany &lt;= 6 THEN '3-6yr'
+        WHEN YearsAtCompany &lt;= 10 THEN '6-10yr'
+        ELSE '10+yr'
+    END AS TenureBucket,
+
+    CASE
+        WHEN JobSatisfaction &lt;= 2 THEN 'Low (1-2)'
+        ELSE 'High (3-4)'
+    END AS SatisfactionBucket,
+
+    CASE
+        WHEN OverTime = 'Yes' AND JobSatisfaction &lt;= 2 AND Attrition = 'No' THEN 'At Risk'
+        ELSE 'Normal'
+    END AS AtRiskFlag,
+
+    MonthlyIncome * 12 AS AnnualIncome,
+
+    CASE WHEN Attrition = 'Yes' THEN MonthlyIncome * 12 * 0.5 ELSE 0 END AS EstReplacementCost
+
+FROM income_ranked;</sql><sql name="SQL 11*">SELECT
+    ROUND(SUM(CASE WHEN Attrition = 'Yes' THEN MonthlyIncome * 12 * 0.5 ELSE 0 END), 0)
+        AS historical_cost_all_departments
+FROM employee;</sql><sql name="SQL 12*">
+WITH at_risk AS (
+    SELECT MonthlyIncome
+    FROM employee
+    WHERE Attrition = 'No' AND OverTime = 'Yes' AND JobSatisfaction &lt;= 2
+),
+segment_rate AS (
+    -- the segment's own observed historical attrition rate; this is the
+    -- probability we apply, because it's the same population the 97 came from
+    SELECT 100.0 * SUM(CASE WHEN Attrition = 'Yes' THEN 1 ELSE 0 END) / COUNT(*) AS rate_pct
+    FROM employee
+    WHERE OverTime = 'Yes' AND JobSatisfaction &lt;= 2
+)
+SELECT
+    (SELECT COUNT(*) FROM at_risk)                               AS at_risk_count,
+    (SELECT ROUND(rate_pct, 1) FROM segment_rate)                AS segment_attrition_rate_pct,
+    ROUND((SELECT SUM(MonthlyIncome * 12 * 0.5) FROM at_risk), 0) AS full_cost_if_all_leave,
+    ROUND((SELECT SUM(MonthlyIncome * 12 * 0.5) FROM at_risk) *
+          (SELECT rate_pct FROM segment_rate) / 100.0, 0)        AS expected_cost_probability_weighted;</sql><sql name="SQL 13*">
+WITH at_risk AS (
+    SELECT MonthlyIncome
+    FROM employee
+    WHERE Attrition = 'No' AND OverTime = 'Yes' AND JobSatisfaction &lt;= 2
+),
+segment_rate AS (
+    SELECT 100.0 * SUM(CASE WHEN Attrition = 'Yes' THEN 1 ELSE 0 END) / COUNT(*) AS rate_pct
+    FROM employee
+    WHERE OverTime = 'Yes' AND JobSatisfaction &lt;= 2
+),
+historical_leavers AS (
+    SELECT MonthlyIncome FROM employee WHERE Attrition = 'Yes'
+),
+pct_assumptions(replacement_pct) AS (
+    VALUES (0.25), (0.50), (0.75), (1.00)
+)
+SELECT
+    replacement_pct * 100 AS replacement_pct_of_salary,
+    ROUND((SELECT SUM(MonthlyIncome * 12) FROM historical_leavers) * replacement_pct, 0)
+        AS historical_cost_237_leavers,
+    ROUND((SELECT SUM(MonthlyIncome * 12) FROM at_risk) * replacement_pct, 0)
+        AS full_at_risk_cost_if_all_97_leave,
+    ROUND((SELECT SUM(MonthlyIncome * 12) FROM at_risk) * replacement_pct *
+          (SELECT rate_pct FROM segment_rate) / 100.0, 0)
+        AS expected_at_risk_cost_probability_weighted
+FROM pct_assumptions
+ORDER BY replacement_pct;</sql><sql name="SQL 14*">WITH at_risk AS (
+    SELECT MonthlyIncome
+    FROM employee
+    WHERE Attrition = 'No' AND OverTime = 'Yes' AND JobSatisfaction &lt;= 2
+),
+segment_rate AS (
+    SELECT 100.0 * SUM(CASE WHEN Attrition = 'Yes' THEN 1 ELSE 0 END) / COUNT(*) AS rate_pct
+    FROM employee
+    WHERE OverTime = 'Yes' AND JobSatisfaction &lt;= 2
+),
+base AS (
+    SELECT
+        (SELECT SUM(MonthlyIncome * 12 * 0.5) FROM at_risk) AS full_cost,
+        (SELECT rate_pct FROM segment_rate)                 AS base_rate_pct
+),
+point_reductions(reduction_pts) AS (
+    VALUES (5.0), (10.0), (15.0), (20.0)
+)
+SELECT
+    reduction_pts                                              AS attrition_rate_reduction_pts,
+    ROUND(base_rate_pct - reduction_pts, 1)                    AS new_rate_pct,
+    ROUND(full_cost * base_rate_pct / 100.0, 0)                AS expected_cost_before_intervention,
+    ROUND(full_cost * (base_rate_pct - reduction_pts) / 100.0, 0) AS expected_cost_after_intervention,
+    ROUND(full_cost * reduction_pts / 100.0, 0)                AS cost_avoided
+FROM base, point_reductions
+ORDER BY reduction_pts;</sql><sql name="SQL 15*">SELECT COUNT(*), SUM(CASE WHEN Attrition='Yes' THEN 1 ELSE 0 END) FROM employee;</sql><current_tab id="10"/></tab_sql></sqlb_project>
